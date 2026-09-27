@@ -25,6 +25,10 @@ export type Project = {
   tags: string[];
 };
 
+export type SchemaColumn = { name: string; type: string; key?: 'pk' | 'fk' };
+export type SchemaTable = { id: string; name: string; note: string; columns: SchemaColumn[] };
+export type SchemaRelation = { from: [string, string]; to: [string, string]; label: string };
+
 export const profile = {
   name: 'Ahmed Ghazy',
   title: 'Full-Stack Engineer',
@@ -140,6 +144,64 @@ export const projects: Project[] = [
   },
 ];
 
+export const schema = {
+  lead: 'Most of my work shows up in the UI, but every screen starts here. This is a listing search the way I would model it on Postgres: plain-English queries stored with the filters they resolve to, and valuations tied back to the homes they score.',
+  caption: 'Supabase-flavoured Postgres, drawn as an ERD. Row-level security policies on every table.',
+  tables: [
+    {
+      id: 'users',
+      name: 'users',
+      note: 'viewers and their plan',
+      columns: [
+        { name: 'id', type: 'uuid', key: 'pk' },
+        { name: 'email', type: 'citext' },
+        { name: 'plan', type: 'text' },
+        { name: 'created_at', type: 'timestamptz' },
+      ],
+    },
+    {
+      id: 'searches',
+      name: 'searches',
+      note: 'plain English in, filters out',
+      columns: [
+        { name: 'id', type: 'uuid', key: 'pk' },
+        { name: 'user_id', type: 'uuid', key: 'fk' },
+        { name: 'top_listing_id', type: 'uuid', key: 'fk' },
+        { name: 'query', type: 'text' },
+        { name: 'filters', type: 'jsonb' },
+      ],
+    },
+    {
+      id: 'listings',
+      name: 'listings',
+      note: 'homes across the UAE and UK markets',
+      columns: [
+        { name: 'id', type: 'uuid', key: 'pk' },
+        { name: 'city', type: 'citext' },
+        { name: 'price', type: 'numeric' },
+        { name: 'beds', type: 'int' },
+        { name: 'status', type: 'text' },
+      ],
+    },
+    {
+      id: 'valuations',
+      name: 'valuations',
+      note: 'estimates from an LLM pass',
+      columns: [
+        { name: 'id', type: 'uuid', key: 'pk' },
+        { name: 'listing_id', type: 'uuid', key: 'fk' },
+        { name: 'score', type: 'numeric' },
+        { name: 'model', type: 'text' },
+      ],
+    },
+  ] satisfies SchemaTable[],
+  relations: [
+    { from: ['searches', 'user_id'], to: ['users', 'id'], label: 'n:1' },
+    { from: ['searches', 'top_listing_id'], to: ['listings', 'id'], label: 'n:1' },
+    { from: ['valuations', 'listing_id'], to: ['listings', 'id'], label: 'n:1' },
+  ] satisfies SchemaRelation[],
+};
+
 export const ui = {
   skipLink: 'Skip to Content',
   newTab: ' (opens in a new tab)',
@@ -151,6 +213,7 @@ export const ui = {
     { id: 'about', title: 'About' },
     { id: 'experience', title: 'Experience' },
     { id: 'projects', title: 'Projects' },
+    { id: 'schema', title: 'Data Model' },
   ],
   resume: { lead: 'View Full', last: 'Résumé' },
   contact: {

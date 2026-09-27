@@ -287,6 +287,50 @@
   }
 }
 
+/* ---------------------------------------------------------- schema edges --
+ * Drawn by SchemaDiagram from the DOM. The reveal observer adds .is-in to the
+ * panel; the FK edges then draw themselves in (pathLength=1 normalizes). */
+.schema-edge-dim {
+  stroke-opacity: 0.12;
+}
+
+.schema-node-dim {
+  opacity: 0.35;
+}
+
+[data-schema-table],
+.schema-edge,
+.schema-edge-label {
+  transition:
+    opacity 200ms ease-out,
+    stroke-opacity 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal] .schema-edge {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    transition:
+      stroke-dashoffset 900ms var(--ease-out-expo) 250ms,
+      stroke-opacity 200ms ease-out;
+  }
+
+  .js [data-reveal].is-in .schema-edge {
+    stroke-dashoffset: 0;
+  }
+
+  .js [data-reveal] .schema-edge-label {
+    opacity: 0;
+    transition:
+      opacity 400ms ease-out 900ms,
+      stroke-opacity 200ms ease-out;
+  }
+
+  .js [data-reveal].is-in .schema-edge-label {
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .js [data-reveal]:not([data-reveal='wipe']),
   .js .rail-enter {

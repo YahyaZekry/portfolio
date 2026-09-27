@@ -1,0 +1,157 @@
+---
+import { schema } from '../data/profile';
+---
+
+<div class="relative rounded-xl border border-line bg-surface p-4 card-edge sm:p-6" data-schema data-reveal>
+  <svg
+    class="pointer-events-none absolute inset-0 hidden overflow-visible sm:block"
+    aria-hidden="true"
+    data-schema-edges
+  ></svg>
+
+  <div class="relative grid gap-4 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-10">
+    {schema.tables.map((table) => (
+      <div class="rounded-lg border border-line bg-canvas transition-colors duration-200" data-schema-table={table.id}>
+        <div class="border-b border-line px-4 py-3">
+          <p class="font-mono text-sm font-semibold text-ink">{table.name}</p>
+          <p class="mt-0.5 text-xs text-muted">{table.note}</p>
+        </div>
+        <ul>
+          {table.columns.map((column) => (
+            <li
+              class="flex items-center justify-between gap-3 border-b border-line px-4 py-1.5 text-xs last:border-b-0"
+              data-schema-column={`${table.id}.${column.name}`}
+            >
+              <span class="flex items-center gap-2">
+                {column.key && (
+                  <span
+                    class={`inline-block w-7 rounded-sm py-px text-center font-mono text-[10px] leading-4 ${
+                      column.key === 'pk' ? 'bg-accent/15 text-accent' : 'text-muted'
+                    }`}
+                  >
+                    {column.key.toUpperCase()}
+                  </span>
+                )}
+                <span class={column.key === 'fk' ? 'font-mono text-muted' : 'font-mono text-soft'}>{column.name}</span>
+              </span>
+              <span class="font-mono text-[11px] text-muted">{column.type}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+
+  <p class="mt-5 text-xs text-muted">{schema.caption}</p>
+</div>
+
+<script>
+  // Edges are drawn from the DOM so anchors stay true across themes, fonts and
+  // resizes; everything is SVG attributes and classes, which the CSP allows.
+  const panel = document.querySelector<HTMLElement>('[data-schema]');
+  const svg = panel?.querySelector<SVGSVGElement>('[data-schema-edges]');
+
+  const columnEl = (table: string, column: string) =>
+    panel?.querySelector<HTMLElement>(`[data-schema-column="${table}.${column}"]`);
+
+  function draw() {
+    if (!panel || !svg) return;
+    const box = panel.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
+    svg.replaceChildren();
+
+    for (const { from, to, label } of [
+      { from: ['searches', 'user_id'], to: ['users', 'id'], label: 'n:1' },
+      { from: ['searches', 'top_listing_id'], to: ['listings', 'id'], label: 'n:1' },
+      { from: ['valuations', 'listing_id'], to: ['listings', 'id'], label: 'n:1' },
+    ] as const) {
+      const fromEl = columnEl(from[0], from[1]);
+      const toEl = columnEl(to[0], to[1]);
+      if (!fromEl || !toEl) continue;
+
+      const fromBox = fromEl.getBoundingClientRect();
+      const toBox = toEl.getBoundingClientRect();
+      // Same-column pairs (a table stacked under its target) both exit right,
+      // forming a short arc in the gutter instead of a long sweep.
+      const fromSide = fromBox.left > toBox.right ? 'left' : 'right';
+      const x1 = fromSide === 'left' ? fromBox.left - box.left : fromBox.right - box.left;
+      const y1 = fromBox.top - box.top + fromBox.height / 2;
+      const x2 = fromSide === 'left' ? toBox.right - box.left : toBox.left - box.left;
+      const y2 = toBox.top - box.top + toBox.height / 2;
+      const dx = Math.abs(x2 - x1);
+      const bend = dx > 40 ? Math.max(28, dx / 2) : 18;
+      const signed = fromSide === 'left' ? -bend : bend;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M ${x1} ${y1} C ${x1 + signed} ${y1}, ${x2 - signed} ${y2}, ${x2} ${y2}`);
+      path.setAttribute('pathLength', '1');
+      path.setAttribute('class', 'schema-edge');
+      path.setAttribute('data-tables', `${from[0]} ${to[0]}`);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'var(--color-accent)');
+      path.setAttribute('stroke-opacity', '0.55');
+      path.setAttribute('stroke-width', '1.5');
+      svg.append(path);
+
+      const mid = path.getPointAtLength(path.getTotalLength() / 2);
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', String(mid.x));
+      text.setAttribute('y', String(mid.y - 6));
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('class', 'schema-edge-label');
+      text.setAttribute('fill', 'var(--color-muted)');
+      text.setAttribute('font-size', '10');
+      text.textContent = label;
+      svg.append(text);
+    }
+  }
+
+  if (panel && svg) {
+    let frame = 0;
+    const schedule = () => {
+      if (!frame) {
+        frame = requestAnimationFrame(() => {
+          frame = 0;
+          draw();
+        });
+      }
+    };
+    window.addEventListener('resize', schedule, { passive: true });
+    document.fonts?.ready.then(schedule);
+    schedule();
+    // Late layout (imageless rows still shifting after fonts) settles fast; redraw once more.
+    setTimeout(schedule, 300);
+
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      const nodes = [...panel.querySelectorAll<HTMLElement>('[data-schema-table]')];
+
+      for (const node of nodes) {
+        const id = node.dataset.schemaTable!;
+        node.addEventListener('pointerenter', () => {
+          // Query lazily: draw() populates the edges on its first rAF, after
+          // this setup block has already run.
+          const edges = [...svg.querySelectorAll<SVGPathElement>('[data-tables]')];
+          for (const edge of edges) {
+            const tables = edge.getAttribute('data-tables')!.split(' ');
+            edge.classList.toggle('schema-edge-dim', !tables.includes(id));
+          }
+          for (const other of nodes) {
+            const otherId = other.dataset.schemaTable!;
+            const related =
+              otherId === id ||
+              edges.some((edge) => {
+                const [a, b] = edge.getAttribute('data-tables')!.split(' ');
+                return (a === id && b === otherId) || (a === otherId && b === id);
+              });
+            other.classList.toggle('schema-node-dim', !related);
+          }
+        });
+      }
+      panel.addEventListener('pointerleave', () => {
+        for (const el of panel.querySelectorAll('.schema-edge-dim, .schema-node-dim')) {
+          el.classList.remove('schema-edge-dim', 'schema-node-dim');
+        }
+      });
+    }
+  }
+</script>

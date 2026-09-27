@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { toPlainText } from '../lib/inline';
-import { about, experience, profile, projects, socials } from '../data/profile';
+import { about, experience, profile, projects, schema, socials } from '../data/profile';
 
 // Follows llmstxt.org: H1, blockquote, free-form sections, then H2 sections that only hold link lists.
 export const GET: APIRoute = ({ site }) => {
@@ -32,6 +32,20 @@ export const GET: APIRoute = ({ site }) => {
     ...projects.map(
       (project) => `- [${project.name}](${project.href}): ${project.summary} Tech: ${project.tags.join(', ')}.`,
     ),
+    '',
+    '## Data Model',
+    '',
+    `${schema.lead}`,
+    '',
+    ...schema.tables.map(
+      (table) =>
+        `- ${table.name} (${table.note}): ${table.columns
+          .map((column) => `${column.name} ${column.type}${column.key ? ` ${column.key.toUpperCase()}` : ''}`)
+          .join(', ')}.`,
+    ),
+    `- Relations: ${schema.relations
+      .map(({ from, to, label }) => `${from[0]}.${from[1]} -> ${to[0]}.${to[1]} (${label})`)
+      .join('; ')}.`,
     '',
     '## Links',
     '',
