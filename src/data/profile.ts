@@ -1,4 +1,5 @@
 import type { ImageMetadata } from 'astro';
+import portrait from '../assets/portrait.webp';
 import leicht from '../assets/projects/leicht.webp';
 import scriptbee from '../assets/projects/scriptbee.png';
 
@@ -29,6 +30,7 @@ export const profile = {
   title: 'Full-Stack Engineer',
   seoTitle: 'Ahmed Ghazy — Full-Stack Engineer',
   tagline: 'I build LLM-native web apps end to end. Most of my work is on the frontend.',
+  photo: { src: portrait, alt: 'Black-and-white portrait of Ahmed Ghazy' },
   description:
     'Ahmed Ghazy is a full-stack engineer who works mostly on the frontend. He builds LLM-native web apps with React, Next.js, TypeScript and Node.js.',
   location: { city: 'Alexandria', country: 'EG', label: 'Alexandria, Egypt, and open to remote work' },
@@ -36,7 +38,7 @@ export const profile = {
   resume: '/resume.pdf',
   // JSON-LD ProfilePage dates; bump `updated` whenever the copy changes.
   created: '2026-09-23',
-  updated: '2026-09-24',
+  updated: '2026-09-27',
   knowsAbout: [
     'React',
     'Next.js',
@@ -56,7 +58,7 @@ export const profile = {
   education: {
     degree: 'BSc Computer & Information Systems (MIS)',
     school: 'Higher Institute of Computer and Information Systems, Abu Qir',
-    years: '2015–2020',
+    years: '2015-2020',
   },
 };
 
@@ -151,6 +153,10 @@ export const ui = {
     { id: 'projects', title: 'Projects' },
   ],
   resume: { lead: 'View Full', last: 'Résumé' },
+  contact: {
+    title: 'Get in touch',
+    body: 'I’m open to new opportunities, and the fastest way to reach me is email.',
+  },
   footer:
     'Built with [Astro](https://astro.build) and [Tailwind CSS](https://tailwindcss.com), hosted on [Netlify](https://www.netlify.com) and set in [Inter](https://rsms.me/inter/). Layout inspired by [Brittany Chiang](https://brittanychiang.com)’s portfolio.',
   notFound: {

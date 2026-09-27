@@ -29,5 +29,9 @@ pnpm-debug.log*
 # per-developer Claude Code overrides
 .claude/settings.local.json
 
+# local browser-verification artifacts
+.playwright-mcp/
+shots/
+
 # Serena's project config is shared; a global `.serena/` ignore would otherwise drop it.
 !.serena/

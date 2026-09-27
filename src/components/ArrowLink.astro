@@ -11,11 +11,11 @@ interface Props {
 
 const { href, lead, last, external = false } = Astro.props;
 const underline =
-  'border-b border-transparent pb-px transition group-hover/link:border-teal-300 motion-reduce:transition-none';
+  'border-b border-line-strong pb-px transition group-hover/link:border-accent group-focus-visible/link:border-accent motion-reduce:transition-none';
 ---
 
 <a
-  class="group/link inline-flex items-baseline text-base font-semibold leading-tight text-slate-200 hover:text-teal-300 focus-visible:text-teal-300"
+  class="group/link inline-flex items-baseline text-base font-semibold leading-tight text-ink transition-colors hover:text-accent focus-visible:text-accent motion-reduce:transition-none"
   href={href}
   target={external ? '_blank' : undefined}
   rel={external ? 'noreferrer noopener' : undefined}

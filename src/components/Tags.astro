@@ -8,12 +8,10 @@ interface Props {
 const { tags } = Astro.props;
 ---
 
-<ul class="mt-2 flex flex-wrap" aria-label={ui.tagsLabel}>
+<ul class="mt-3 flex flex-wrap" aria-label={ui.tagsLabel}>
   {tags.map((tag) => (
     <li class="mr-1.5 mt-2">
-      <div class="flex items-center rounded-full bg-teal-400/10 px-3 py-1 text-xs font-medium leading-5 text-teal-300">
-        {tag}
-      </div>
+      <div class="rounded-full border border-line px-3 py-1 text-xs font-medium leading-5 text-soft">{tag}</div>
     </li>
   ))}
 </ul>

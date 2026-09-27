@@ -1,5 +1,4 @@
 ---
-import CardHighlight from './CardHighlight.astro';
 import Icon from './Icon.astro';
 import Tags from './Tags.astro';
 import { ui, type Experience } from '../data/profile';
@@ -11,51 +10,80 @@ interface Props {
 const { start, end, role, company, href, note, summary, tags } = Astro.props.item;
 ---
 
-<li class="mb-12">
-  <div class="group relative grid pb-1 transition-all sm:grid-cols-8 sm:gap-8 md:gap-4 lg:hover:opacity-100! lg:group-hover/list:opacity-50">
-    <CardHighlight />
-    <p class="z-10 mb-2 mt-1 text-xs font-semibold uppercase tracking-wide text-muted sm:col-span-2">
+<!-- No reveal fade here: a card that faded in while sliding over a pinned one
+     double-exposed its text. The pile is this section's animation. -->
+<li class="mb-6 lg:sticky lg:mb-14" data-deck-item>
+  <article
+    data-deck-card
+    class="relative rounded-xl border border-line bg-surface p-5 card-edge hover:border-line-strong sm:p-6 lg:p-7"
+  >
+    <p class="tns text-xs font-semibold tracking-wide text-muted uppercase">
       <span aria-hidden="true">
-        {start} — {end}
+        {start} - {end}
+        {note && ` · ${note}`}
       </span>
-      <span class="sr-only normal-case">{`${start} ${ui.dateTo} ${end}`}</span>
+      <span class="sr-only normal-case">{`${start} ${ui.dateTo} ${end}${note ? `, ${note}` : ''}`}</span>
     </p>
-    <div class="z-10 sm:col-span-6">
-      <h3 class="font-medium leading-snug text-slate-200">
-        {href ? (
-          <a
-            class="group/link inline-flex items-baseline text-base font-medium leading-tight text-slate-200 hover:text-teal-300 focus-visible:text-teal-300"
-            href={href}
-            target="_blank"
-            rel="noreferrer noopener"
-          >
-            <span class="absolute -inset-x-4 -inset-y-2.5 hidden rounded-sm md:-inset-x-6 md:-inset-y-4 lg:block" />
-            <span>
-              {role} ·{' '}
-              <span class="inline-block">
-                {company}
-                <Icon
-                  name="arrow-up-right"
-                  class="ml-1 inline-block h-4 w-4 shrink-0 translate-y-px transition-transform group-hover/link:-translate-y-1 group-hover/link:translate-x-1 group-focus-visible/link:-translate-y-1 group-focus-visible/link:translate-x-1 motion-reduce:transition-none"
-                />
-              </span>
-            </span>
-            <span class="sr-only">{ui.newTab}</span>
-          </a>
-        ) : (
-          <span class="text-base leading-tight">
-            {role} · {company}
-          </span>
-        )}
-        {note && (
-          <span class="block text-muted">
-            <span class="sr-only">, </span>
-            {note}
-          </span>
-        )}
-      </h3>
-      <p class="mt-2 text-sm leading-normal">{summary}</p>
-      <Tags tags={tags} />
-    </div>
-  </div>
+    <h3 class="mt-3 font-medium text-ink">
+      {href ? (
+        <a
+          class="group/link inline-flex items-baseline text-base leading-snug transition-colors hover:text-accent focus-visible:text-accent motion-reduce:transition-none"
+          href={href}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          {role} · {company}
+          <Icon
+            name="arrow-up-right"
+            class="ml-1 inline-block h-4 w-4 shrink-0 translate-y-px transition-transform group-hover/link:-translate-y-1 group-hover/link:translate-x-1 group-focus-visible/link:-translate-y-1 group-focus-visible/link:translate-x-1 motion-reduce:transition-none"
+          />
+          <span class="sr-only">{ui.newTab}</span>
+        </a>
+      ) : (
+        <span class="text-base leading-snug">
+          {role} · {company}
+        </span>
+      )}
+    </h3>
+    <p class="mt-2 text-sm leading-normal text-soft">{summary}</p>
+    <Tags tags={tags} />
+  </article>
 </li>
+
+<script>
+  // Deck: cards pin in a staggered pile, and once the next card has arrived at
+  // its pin the covered one is marked so it reads as filed away. Offsets are
+  // written through CSSOM because the CSP bans inline style attributes.
+  const items = [...document.querySelectorAll<HTMLElement>('[data-deck-item]')];
+  const cards = [...document.querySelectorAll<HTMLElement>('[data-deck-card]')];
+  const wide = window.matchMedia('(min-width: 1024px)');
+  const PIN = 24;
+  const STEP = 14;
+
+  if (items.length > 1) {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      if (!wide.matches) {
+        items.forEach((item) => item.style.removeProperty('top'));
+        cards.forEach((card) => card.removeAttribute('data-covered'));
+        return;
+      }
+      items.forEach((item, i) => item.style.setProperty('top', `${PIN + i * STEP}px`));
+      cards.forEach((card, i) => {
+        const next = cards[i + 1];
+        if (next === undefined) return;
+        // Hysteresis so a card at the threshold cannot flicker on and off.
+        const top = next.getBoundingClientRect().top;
+        const covered = card.hasAttribute('data-covered') ? top <= PIN + i * STEP + 28 : top <= PIN + i * STEP + 20;
+        card.toggleAttribute('data-covered', covered);
+      });
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    update();
+  }
+</script>

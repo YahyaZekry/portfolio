@@ -3,28 +3,110 @@
 @source not '../lib';
 @source not '../pages/*.ts';
 
-/* Tailwind v4 ships OKLCH palettes; pin the sRGB hex values so colours render exactly. */
+/*
+ * Two themes, one accent hue, one neutral family per theme.
+ * Dark: neutral greys. Light: cream, with the accent's darker two-stop so it
+ * holds WCAG AA on a light ground. Radius system: containers and media are
+ * 12px (rounded-xl); interactive controls (tags, skip link) are full pills.
+ * The theme vars live outside @theme so they can flip per scope; the Tailwind
+ * color tokens point at them.
+ */
 @theme {
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
-  --color-slate-200: #e2e8f0;
-  --color-slate-400: #94a3b8;
-  --color-slate-600: #475569;
-  --color-slate-800: #1e293b;
-  --color-slate-900: #0f172a;
-  --color-teal-300: #5eead4;
-  --color-teal-400: #2dd4bf;
-  --color-teal-900: #134e4a;
-  --color-yellow-500: #eab308;
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-ink: var(--c-ink);
+  --color-soft: var(--c-soft);
+  --color-muted: var(--c-muted);
+  --color-accent: var(--c-accent);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
 
-  /* The template's slate-500 is 3.75:1 on slate-900; this clears WCAG AA 4.5:1, hovered card included. */
-  --color-muted: #7a889e;
+  --ease-out-expo: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-@utility card-lift {
-  filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
+/* Dark: shades of grey, off-black only as ink. */
+:root {
+  --c-canvas: #1a1a1c;
+  --c-surface: #242427;
+  --c-ink: #f2f2f3;
+  --c-soft: #b4b4b8;
+  /* Clear WCAG AA 4.5:1 on both canvas and surface. */
+  --c-muted: #94949a;
+  --c-accent: #5eead4;
+  --c-accent-ink: #0a2e29;
+  --c-line: rgb(242 242 243 / 0.09);
+  --c-line-strong: rgb(242 242 243 / 0.18);
+  --edge: inset 0 1px 0 rgb(242 242 243 / 0.06);
+  --spot: rgba(94, 234, 212, 0.07);
+  color-scheme: dark;
+}
+
+/* Light: cream. */
+[data-theme='light'] {
+  --c-canvas: #f4f0e6;
+  --c-surface: #fbf8f1;
+  --c-ink: #26241f;
+  --c-soft: #56534a;
+  --c-muted: #6e6a5f;
+  --c-accent: #0f766e;
+  --c-accent-ink: #f4f0e6;
+  --c-line: rgb(38 36 31 / 0.12);
+  --c-line-strong: rgb(38 36 31 / 0.22);
+  --edge: inset 0 1px 0 rgb(255 255 255 / 0.65);
+  --spot: rgba(15, 118, 110, 0.08);
+  color-scheme: light;
+}
+
+/* System followers get the cream too, until they pick a theme by hand. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --c-canvas: #f4f0e6;
+    --c-surface: #fbf8f1;
+    --c-ink: #26241f;
+    --c-soft: #56534a;
+    --c-muted: #6e6a5f;
+    --c-accent: #0f766e;
+    --c-accent-ink: #f4f0e6;
+    --c-line: rgb(38 36 31 / 0.12);
+    --c-line-strong: rgb(38 36 31 / 0.22);
+    --edge: inset 0 1px 0 rgb(255 255 255 / 0.65);
+    --spot: rgba(15, 118, 110, 0.08);
+    color-scheme: light;
+  }
+}
+
+/* 1px top highlight: a raised lip catching light sells the surface better than blur. */
+@utility card-edge {
+  box-shadow: var(--edge);
+}
+
+/* Theme toggle shows the icon of the mode clicking will switch to:
+   sun while dark, moon while light, following the resolved theme. */
+.theme-toggle .icon-moon {
+  display: none;
+}
+
+[data-theme='light'] .theme-toggle .icon-moon {
+  display: block;
+}
+
+[data-theme='light'] .theme-toggle .icon-sun {
+  display: none;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .theme-toggle .icon-moon {
+    display: block;
+  }
+
+  :root:not([data-theme='dark']) .theme-toggle .icon-sun {
+    display: none;
+  }
 }
 
 @layer base {
@@ -32,11 +114,192 @@
     scroll-behavior: smooth;
     /* Variable Inter would switch to its narrower Display cut at heading sizes; keep the text cut. */
     font-optical-sizing: none;
+    accent-color: var(--color-accent);
+    caret-color: var(--color-accent);
+    scrollbar-color: color-mix(in oklab, var(--color-ink) 22%, transparent) transparent;
+  }
+
+  body {
+    overflow-x: clip;
+    text-underline-offset: 0.22em;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Dates, figures and anything that tabulates: keep digits from jittering. */
+  .tns {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  /* Pressed feedback: every link acknowledges the push. */
+  a:active {
+    opacity: 0.8;
   }
 
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
     }
+  }
+}
+
+/* ------------------------------------------------------------------ grain --
+ * Fixed, pointer-events-none texture at 4%: the difference between "a dark
+ * page" and "a lit room", and it keeps the flat ground from banding. */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+
+/* ------------------------------------------------------- motion primitives --
+ * Scroll reveals fire once on entry; the hiding state only exists once the
+ * motion script has confirmed IntersectionObserver (the `js` class) and the
+ * reader allows motion, so content is never trapped invisible. */
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal]:not([data-reveal='wipe']) {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+    transition:
+      opacity 620ms var(--ease-out-expo),
+      transform 620ms var(--ease-out-expo);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  .js [data-reveal]:not([data-reveal='wipe']).is-in {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* A wipe is a change of state: a ground-colored curtain slides off the media.
+     The covered element is never clipped itself, so lazy loading and the
+     reveal observer never see a hidden box. */
+  .js [data-reveal='wipe'] {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .js [data-reveal='wipe']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--color-canvas);
+    transform: scaleX(1);
+    transform-origin: 100% 50%;
+    transition: transform 800ms var(--ease-out-expo) 150ms;
+  }
+
+  .js [data-reveal='wipe'].is-in::after {
+    transform: scaleX(0);
+  }
+
+  /* Hero: one masked rise per rail block, staggered by DOM position (the CSP
+     bans inline style attributes, so staggers live in selectors). */
+  @keyframes rail-rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 16px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .js .rail-enter {
+    animation: rail-rise 700ms var(--ease-out-expo) both;
+  }
+
+  .js .rail-enter:nth-child(2) {
+    animation-delay: 90ms;
+  }
+
+  .js .rail-enter:nth-child(3) {
+    animation-delay: 180ms;
+  }
+
+  .js .rail-enter:nth-child(4) {
+    animation-delay: 270ms;
+  }
+
+  /* Reveal stagger for a group's children. */
+  .js [data-reveal-group] > [data-reveal]:nth-child(2) {
+    --reveal-delay: 70ms;
+  }
+
+  .js [data-reveal-group] > [data-reveal]:nth-child(3) {
+    --reveal-delay: 140ms;
+  }
+
+  .js [data-reveal-group] > [data-reveal]:nth-child(4) {
+    --reveal-delay: 210ms;
+  }
+}
+
+/* Experience deck: cards pin in a staggered pile; a card the next one has
+   covered reads as filed away. The pile itself is layout and stays under
+   reduced motion; only the coverage dim is motion. Each card's offset comes
+   from the deck script (CSSOM), which the CSP's style-src allows. */
+@media (min-width: 1024px) {
+  [data-deck-item] {
+    top: 1.5rem;
+  }
+}
+
+/* Covered cards hide their content, keeping only the surface slab: the deck
+   script pushes pinned cards up at the container's end, and a text-bearing
+   sliver would slice through the gaps between card edges. */
+@media (min-width: 1024px) {
+  [data-deck-card][data-covered] > * {
+    opacity: 0;
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  [data-deck-card] > * {
+    transition: opacity 300ms var(--ease-out-expo);
+  }
+
+  [data-deck-card] {
+    transition:
+      transform 300ms var(--ease-out-expo),
+      border-color 200ms ease-out;
+  }
+
+  [data-deck-card][data-covered] {
+    transform: scale(0.988);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js [data-reveal]:not([data-reveal='wipe']),
+  .js .rail-enter {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .js .rail-enter {
+    animation: none;
+  }
+
+  .js [data-reveal='wipe']::after {
+    display: none;
   }
 }

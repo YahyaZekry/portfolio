@@ -19,7 +19,7 @@ const [aboutSection, experienceSection, projectsSection] = ui.sections;
     <div class="mx-auto min-h-screen max-w-7xl px-6 py-12 font-sans md:px-12 md:py-16 lg:py-0">
       <a
         href="#content"
-        class="absolute left-0 top-0 block -translate-x-full rounded-sm bg-yellow-500 px-4 py-3 text-sm font-bold uppercase tracking-widest text-slate-900 focus-visible:translate-x-0"
+        class="absolute top-0 left-0 z-50 block -translate-x-full rounded-full bg-accent px-4 py-3 text-sm font-bold tracking-widest text-accent-ink uppercase focus-visible:translate-x-0"
       >
         {ui.skipLink}
       </a>
@@ -29,28 +29,30 @@ const [aboutSection, experienceSection, projectsSection] = ui.sections;
         <div class="pt-24 lg:w-[52%] lg:py-24">
           <main id="content">
             <Section {...aboutSection}>
-              <div>
-                {about.map((paragraph) => (
-                  <RichText source={paragraph} class="mb-4 last:mb-0" />
+              <div data-reveal-group>
+                {about.map((paragraph, i) => (
+                  <div class={`${i === 0 ? 'mb-5' : 'mb-4'} last:mb-0`} data-reveal>
+                    <RichText source={paragraph} class={i === 0 ? 'text-lg leading-relaxed' : undefined} />
+                  </div>
                 ))}
               </div>
             </Section>
 
             <Section {...experienceSection}>
-              <ol class="group/list">
+              <ol>
                 {experience.map((item) => (
                   <ExperienceItem item={item} />
                 ))}
               </ol>
-              <div class="mt-12">
+              <div class="mt-12" data-reveal>
                 <ArrowLink href={profile.resume} lead={ui.resume.lead} last={ui.resume.last} external />
               </div>
             </Section>
 
             <Section {...projectsSection}>
-              <ul class="group/list">
-                {projects.map((item) => (
-                  <ProjectItem item={item} />
+              <ul>
+                {projects.map((item, i) => (
+                  <ProjectItem item={item} index={i} />
                 ))}
               </ul>
             </Section>

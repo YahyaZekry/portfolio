@@ -2,12 +2,12 @@ import { h } from './render';
 import { profile } from '../data/profile';
 
 const colors = {
-  bg: '#0f172a',
-  heading: '#e2e8f0',
-  body: '#94a3b8',
-  muted: '#7a889e',
+  bg: '#0a0a0b',
+  heading: '#ededf0',
+  body: '#a6a6ad',
+  muted: '#86868f',
   accent: '#5eead4',
-  pill: 'rgba(45, 212, 191, 0.1)',
+  pill: 'rgba(94, 234, 212, 0.1)',
 };
 
 export function monogram({ rounded }: { rounded: boolean }) {
@@ -44,7 +44,7 @@ export function ogCard(host: string) {
       justifyContent: 'space-between',
       padding: 80,
       backgroundColor: colors.bg,
-      backgroundImage: 'radial-gradient(circle at 88% 12%, rgba(29, 78, 216, 0.35), rgba(15, 23, 42, 0) 55%)',
+      backgroundImage: 'radial-gradient(circle at 88% 12%, rgba(94, 234, 212, 0.18), rgba(10, 10, 11, 0) 55%)',
       fontFamily: 'Inter',
     },
     [

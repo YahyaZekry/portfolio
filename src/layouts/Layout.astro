@@ -59,6 +59,7 @@ const structuredData = {
       },
       worksFor: { '@type': 'Organization', name: current.company, url: current.href },
       alumniOf: { '@type': 'EducationalOrganization', name: profile.education.school },
+      image: new URL(profile.photo.src.src, site).href,
       knowsAbout: profile.knowsAbout,
       knowsLanguage: profile.languages.map((language) => ({
         '@type': 'Language',
@@ -111,13 +112,36 @@ const jsonLd = JSON.stringify(structuredData).replace(/</g, '\\u003c');
     <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f0e6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1a1c" />
+    <meta name="color-scheme" content="dark light" />
 
     <Font cssVariable="--font-inter" preload />
+    {/* Restore the chosen theme before paint; otherwise the CSS follows the system. */}
+    <script is:inline>
+      const stored = localStorage.getItem('theme');
+      if (stored === 'light' || stored === 'dark') document.documentElement.dataset.theme = stored;
+      if ('IntersectionObserver' in window) document.documentElement.classList.add('js');
+    </script>
     {!hidden && <script is:inline type="application/ld+json" set:html={jsonLd}></script>}
   </head>
-  <body class="bg-slate-900 leading-relaxed text-slate-400 antialiased selection:bg-teal-300 selection:text-teal-900">
+  <body class="bg-canvas font-sans leading-relaxed text-soft antialiased selection:bg-accent selection:text-accent-ink">
     <slot />
+    <div class="grain" aria-hidden="true"></div>
   </body>
+  <script>
+    // Reveal once on entry, slightly inside the viewport so it fires while the reader is looking.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-in');
+            observer.unobserve(entry.target);
+          }
+        }
+      },
+      { rootMargin: '0px 0px -12% 0px', threshold: 0.15 },
+    );
+    document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
+  </script>
 </html>
