@@ -50,24 +50,44 @@ import { schema } from '../data/profile';
   // resizes; everything is SVG attributes and classes, which the CSP allows.
   const panel = document.querySelector<HTMLElement>('[data-schema]');
   const svg = panel?.querySelector<SVGSVGElement>('[data-schema-edges]');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   const columnEl = (table: string, column: string) =>
     panel?.querySelector<HTMLElement>(`[data-schema-column="${table}.${column}"]`);
 
-  function draw() {
+  const RELATIONS = [
+    { from: ['searches', 'user_id'], to: ['users', 'id'], label: 'n:1' },
+    { from: ['searches', 'top_listing_id'], to: ['listings', 'id'], label: 'n:1' },
+    { from: ['valuations', 'listing_id'], to: ['listings', 'id'], label: 'n:1' },
+  ] as const;
+
+  let edges: {
+    path: SVGPathElement;
+    pulse: SVGCircleElement;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    signed: number;
+    amp: number;
+    phase: number;
+    speed: number;
+  }[] = [];
+  let rafId = 0;
+  let clock = 0;
+  let onScreen = false;
+
+  function build() {
     if (!panel || !svg) return;
     const box = panel.getBoundingClientRect();
     svg.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
     svg.replaceChildren();
+    edges = [];
 
-    for (const { from, to, label } of [
-      { from: ['searches', 'user_id'], to: ['users', 'id'], label: 'n:1' },
-      { from: ['searches', 'top_listing_id'], to: ['listings', 'id'], label: 'n:1' },
-      { from: ['valuations', 'listing_id'], to: ['listings', 'id'], label: 'n:1' },
-    ] as const) {
+    RELATIONS.forEach(({ from, to, label }, i) => {
       const fromEl = columnEl(from[0], from[1]);
       const toEl = columnEl(to[0], to[1]);
-      if (!fromEl || !toEl) continue;
+      if (!fromEl || !toEl) return;
 
       const fromBox = fromEl.getBoundingClientRect();
       const toBox = toEl.getBoundingClientRect();
@@ -103,24 +123,105 @@ import { schema } from '../data/profile';
       text.setAttribute('font-size', '10');
       text.textContent = label;
       svg.append(text);
+
+      const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      pulse.setAttribute('r', '2.5');
+      pulse.setAttribute('class', 'schema-pulse');
+      pulse.setAttribute('fill', 'var(--color-accent)');
+      pulse.setAttribute('cx', '-20');
+      pulse.setAttribute('cy', '-20');
+      svg.append(pulse);
+
+      edges.push({
+        path,
+        pulse,
+        x1,
+        y1,
+        x2,
+        y2,
+        signed,
+        amp: Math.min(12, Math.max(5, Math.abs(signed) * 0.15)),
+        phase: i * 2.4,
+        speed: 0.26 + i * 0.08,
+      });
+    });
+  }
+
+  // The wires sway: control points breathe while the endpoints stay anchored,
+  // and a pulse rides each wire from FK to PK.
+  function tick(now: number) {
+    const t = (now - clock) / 1000;
+    for (const e of edges) {
+      const wob1 = Math.sin(t * 0.6 + e.phase) * e.amp;
+      const wob2 = Math.sin(t * 0.8 + e.phase + 1.3) * e.amp;
+      const wobY = Math.cos(t * 0.5 + e.phase) * e.amp * 0.35;
+      e.path.setAttribute(
+        'd',
+        `M ${e.x1} ${e.y1} C ${e.x1 + e.signed + wob1} ${e.y1 + wobY}, ${e.x2 - e.signed + wob2} ${e.y2 - wobY}, ${e.x2} ${e.y2}`,
+      );
+      const p = (((t * e.speed + e.phase * 0.13) % 1) + 1) % 1;
+      const pt = e.path.getPointAtLength(p * e.path.getTotalLength());
+      e.pulse.setAttribute('cx', pt.x.toFixed(1));
+      e.pulse.setAttribute('cy', pt.y.toFixed(1));
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function sync() {
+    const should = onScreen && !reducedMotion.matches;
+    if (should && !rafId) {
+      clock = performance.now();
+      rafId = requestAnimationFrame(tick);
+    } else if (!should && rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = 0;
+      // Park the wires on their resting curves.
+      for (const e of edges) {
+        e.path.setAttribute(
+          'd',
+          `M ${e.x1} ${e.y1} C ${e.x1 + e.signed} ${e.y1}, ${e.x2 - e.signed} ${e.y2}, ${e.x2} ${e.y2}`,
+        );
+        e.pulse.setAttribute('cx', '-20');
+        e.pulse.setAttribute('cy', '-20');
+      }
     }
   }
 
   if (panel && svg) {
-    let frame = 0;
-    const schedule = () => {
-      if (!frame) {
-        frame = requestAnimationFrame(() => {
-          frame = 0;
-          draw();
+    let resizeFrame = 0;
+    window.addEventListener(
+      'resize',
+      () => {
+        if (resizeFrame) return;
+        resizeFrame = requestAnimationFrame(() => {
+          resizeFrame = 0;
+          build();
+          // A rebuild can race the visibility observer on viewport changes;
+          // re-sync so the ambient loop always matches the on-screen state.
+          sync();
         });
-      }
-    };
-    window.addEventListener('resize', schedule, { passive: true });
-    document.fonts?.ready.then(schedule);
-    schedule();
-    // Late layout (imageless rows still shifting after fonts) settles fast; redraw once more.
-    setTimeout(schedule, 300);
+      },
+      { passive: true },
+    );
+    document.fonts?.ready.then(() => {
+      build();
+      sync();
+    });
+    build();
+    // Late layout (rows still settling after fonts) shifts anchors once; redraw.
+    setTimeout(() => {
+      build();
+      sync();
+    }, 300);
+
+    new IntersectionObserver(
+      ([entry]) => {
+        onScreen = entry.isIntersecting;
+        sync();
+      },
+      { threshold: 0.05 },
+    ).observe(panel);
+    reducedMotion.addEventListener('change', sync);
 
     if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
       const nodes = [...panel.querySelectorAll<HTMLElement>('[data-schema-table]')];
@@ -128,7 +229,7 @@ import { schema } from '../data/profile';
       for (const node of nodes) {
         const id = node.dataset.schemaTable!;
         node.addEventListener('pointerenter', () => {
-          // Query lazily: draw() populates the edges on its first rAF, after
+          // Query lazily: build() populates the edges on its first rAF, after
           // this setup block has already run.
           const edges = [...svg.querySelectorAll<SVGPathElement>('[data-tables]')];
           for (const edge of edges) {

@@ -298,6 +298,19 @@
   opacity: 0.35;
 }
 
+/* Signal pulses ride the wires; they fade in after the draw-in and only when
+   the ambient loop is allowed to run. */
+.schema-pulse {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal].is-in .schema-pulse {
+    opacity: 0.9;
+    transition: opacity 600ms ease-out 1100ms;
+  }
+}
+
 [data-schema-table],
 .schema-edge,
 .schema-edge-label {
