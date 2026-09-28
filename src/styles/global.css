@@ -311,6 +311,24 @@
   }
 }
 
+/* Filters demo: a resolved chip settles into place (enter from 0.95, never 0). */
+@media (prefers-reduced-motion: no-preference) {
+  .chip-pop {
+    animation: chip-pop 320ms var(--ease-out-expo);
+  }
+
+  @keyframes chip-pop {
+    from {
+      opacity: 0.4;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
 [data-schema-table],
 .schema-edge,
 .schema-edge-label {

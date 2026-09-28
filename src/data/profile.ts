@@ -202,6 +202,17 @@ export const schema = {
   ] satisfies SchemaRelation[],
 };
 
+// The interactive "plain English in, filters out" demo below the ERD. Parsed
+// locally in the browser; no LLM call.
+export const nlDemo = {
+  kicker: 'searches.query → filters',
+  inputLabel: 'Describe the home',
+  placeholder: 'Try: 3 bed flat in Dubai under 2M',
+  outputLabel: 'Resolved filters',
+  hint: 'Parsed locally in your browser. The real thing hands this same shape to Postgres.',
+  examples: ['3 bed flat in Dubai under 2M', 'studio in Manchester under 250k', 'five bed villa in Abu Dhabi'],
+};
+
 export const ui = {
   skipLink: 'Skip to Content',
   newTab: ' (opens in a new tab)',

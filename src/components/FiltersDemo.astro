@@ -1,0 +1,172 @@
+---
+import Icon from './Icon.astro';
+import { nlDemo } from '../data/profile';
+
+const chips = [
+  { id: 'beds', label: 'beds' },
+  { id: 'type', label: 'type' },
+  { id: 'city', label: 'city' },
+  { id: 'price', label: 'max price' },
+];
+---
+
+<div class="relative rounded-xl border border-line bg-surface p-4 card-edge sm:p-6" data-nl-demo data-reveal>
+  <p class="font-mono text-xs text-muted">{nlDemo.kicker}</p>
+
+  <div class="mt-4 grid items-start gap-6 lg:grid-cols-[1fr_auto_1.1fr]">
+    <div>
+      <label for="nl-demo-input" class="text-xs font-medium text-soft">
+        {nlDemo.inputLabel}
+      </label>
+      <input
+        id="nl-demo-input"
+        type="text"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder={nlDemo.placeholder}
+        class="mt-2 w-full rounded-lg border border-line bg-canvas px-3 py-2.5 text-sm text-ink placeholder:text-muted"
+      />
+      <div class="mt-3 flex flex-wrap gap-1.5">
+        {nlDemo.examples.map((example) => (
+          <button
+            type="button"
+            class="rounded-full border border-line px-2.5 py-1 font-mono text-[11px] text-muted transition-colors hover:border-accent/50 hover:text-accent focus-visible:border-accent motion-reduce:transition-none"
+            data-nl-example={example}
+          >
+            {example}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    <div class="hidden items-center self-center text-muted lg:flex" aria-hidden="true">
+      <span class="h-px w-8 bg-line-strong"></span>
+      <Icon name="arrow-right" class="h-4 w-4" />
+    </div>
+
+    <div>
+      <p class="text-xs font-medium text-soft">{nlDemo.outputLabel}</p>
+      <div class="mt-2 flex min-h-9 flex-wrap gap-2" aria-live="polite">
+        {chips.map(({ id, label }) => (
+          <span
+            class="rounded-full border border-line px-3 py-1.5 font-mono text-xs text-muted"
+            data-nl-chip={id}
+            data-label={label}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <p class="mt-5 text-xs text-muted">{nlDemo.hint}</p>
+</div>
+
+<script>
+  // Local heuristic parser: same shape the real pipeline would hand to
+  // Postgres. Vocabulary is intentionally small and honest about it.
+  const root = document.querySelector<HTMLElement>('[data-nl-demo]');
+
+  const CITIES = ['abu dhabi', 'dubai', 'sharjah', 'london', 'manchester', 'birmingham'];
+  const TYPES: [RegExp, string][] = [
+    [/\b(?:flats?|apartments?)\b/, 'flat'],
+    [/\bvillas?\b/, 'villa'],
+    [/\btownhous(?:e|es)\b/, 'townhouse'],
+    [/\bstudios?\b/, 'studio'],
+    [/\bpenthouses?\b/, 'penthouse'],
+  ];
+  const WORD_BEDS: Record<string, string> = {
+    one: '1',
+    two: '2',
+    three: '3',
+    four: '4',
+    five: '5',
+    six: '6',
+    seven: '7',
+    eight: '8',
+  };
+
+  function compact(value: number): string {
+    if (value >= 1e6) return `${String(Math.round(value / 1e5) / 10).replace(/\.0$/, '')}M`;
+    if (value >= 1e3) return `${String(Math.round(value / 100) / 10).replace(/\.0$/, '')}K`;
+    return String(value);
+  }
+
+  function parse(text: string): Record<string, string | null> {
+    const out: Record<string, string | null> = { beds: null, type: null, city: null, price: null };
+    const q = text.toLowerCase();
+
+    const beds =
+      q.match(/\b(\d)\s*-?\s*(?:bed|bedroom|br)\b/) ??
+      Object.keys(WORD_BEDS).reduce<RegExpMatchArray | null>(
+        (hit, word) => hit ?? (q.match(new RegExp(`\\b${word}\\s*-?\\s*bed`)) && [word, WORD_BEDS[word]]),
+        null,
+      );
+    if (beds) out.beds = beds[1];
+
+    for (const [re, name] of TYPES) {
+      if (re.test(q)) {
+        out.type = name;
+        break;
+      }
+    }
+
+    const city = CITIES.find((c) => q.includes(c));
+    if (city) out.city = city.replace(/\b\w/g, (ch) => ch.toUpperCase());
+
+    const price =
+      q.match(/(?:under|below|less than|up to|max(?:imum)?|≤|<)\s*(?:aed|gbp|£|\$)?\s*([\d.,]+)\s*(k|m|million)?\b/) ??
+      q.match(/(?:aed|gbp|£|\$)\s*([\d.,]+)\s*(k|m|million)?\b/) ??
+      q.match(/\b([\d.,]+)\s*(k|m|million)\b/);
+    if (price) {
+      const value =
+        parseFloat(price[1].replace(/,/g, '')) * (price[2]?.startsWith('m') ? 1e6 : price[2] === 'k' ? 1e3 : 1);
+      if (!Number.isNaN(value)) out.price = `≤ ${compact(value)}`;
+    }
+
+    return out;
+  }
+
+  if (root) {
+    const input = root.querySelector<HTMLInputElement>('#nl-demo-input');
+    const chipEls = new Map(
+      [...root.querySelectorAll<HTMLElement>('[data-nl-chip]')].map((el) => [el.dataset.nlChip!, el]),
+    );
+    let last = '';
+
+    function render(text: string) {
+      if (text === last) return;
+      last = text;
+      const parsed = parse(text);
+      for (const [id, el] of chipEls) {
+        const value = parsed[id];
+        const next = value ? `${el.dataset.label}: ${value}` : el.dataset.label!;
+        if (el.textContent !== next) {
+          el.textContent = next;
+          // Retrigger the settle pop only when motion is allowed.
+          el.classList.remove('chip-pop');
+          void el.offsetWidth;
+          el.classList.add('chip-pop');
+        }
+        el.classList.toggle('chip-on', Boolean(value));
+      }
+    }
+
+    input?.addEventListener('input', () => render(input.value));
+    for (const button of root.querySelectorAll<HTMLButtonElement>('[data-nl-example]')) {
+      button.addEventListener('click', () => {
+        input!.value = button.dataset.nlExample!;
+        render(button.dataset.nlExample!);
+      });
+    }
+  }
+</script>
+
+<style>
+  :global(.chip-on) {
+    border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
+    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
+    color: var(--color-accent);
+  }
+</style>
