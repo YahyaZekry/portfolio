@@ -3,11 +3,7 @@ import { schema } from '../data/profile';
 ---
 
 <div class="relative rounded-xl border border-line bg-surface p-4 card-edge sm:p-6" data-schema data-reveal>
-  <svg
-    class="pointer-events-none absolute inset-0 hidden overflow-visible sm:block"
-    aria-hidden="true"
-    data-schema-edges
-  ></svg>
+  <svg class="pointer-events-none absolute inset-0 overflow-visible" aria-hidden="true" data-schema-edges></svg>
 
   <div class="relative grid gap-4 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-10">
     {schema.tables.map((table) => (
@@ -62,8 +58,9 @@ import { schema } from '../data/profile';
   ] as const;
 
   let edges: {
+    mode: 'h' | 'v';
     path: SVGPathElement;
-    pulse: SVGCircleElement;
+    pulse: SVGCircleElement | null;
     x1: number;
     y1: number;
     x2: number;
@@ -91,19 +88,39 @@ import { schema } from '../data/profile';
 
       const fromBox = fromEl.getBoundingClientRect();
       const toBox = toEl.getBoundingClientRect();
-      // Same-column pairs (a table stacked under its target) both exit right,
-      // forming a short arc in the gutter instead of a long sweep.
-      const fromSide = fromBox.left > toBox.right ? 'left' : 'right';
-      const x1 = fromSide === 'left' ? fromBox.left - box.left : fromBox.right - box.left;
-      const y1 = fromBox.top - box.top + fromBox.height / 2;
-      const x2 = fromSide === 'left' ? toBox.right - box.left : toBox.left - box.left;
-      const y2 = toBox.top - box.top + toBox.height / 2;
-      const dx = Math.abs(x2 - x1);
-      const bend = dx > 40 ? Math.max(28, dx / 2) : 18;
-      const signed = fromSide === 'left' ? -bend : bend;
+      // Side-by-side tables get a bezier between their facing edges. Stacked
+      // tables (mobile) get a vertical connector spanning their rows; the
+      // cards paint over it, so only the segment in the gap shows.
+      const horizontal = fromBox.right < toBox.left - 40 || fromBox.left > toBox.right + 40;
+      let x1: number;
+      let y1: number;
+      let x2: number;
+      let y2: number;
+      let signed: number;
+      let mode: 'h' | 'v';
+
+      if (horizontal) {
+        mode = 'h';
+        // Same-column pairs (a table stacked under its target) both exit right,
+        // forming a short arc in the gutter instead of a long sweep.
+        const fromSide = fromBox.left > toBox.right ? 'left' : 'right';
+        x1 = fromSide === 'left' ? fromBox.left - box.left : fromBox.right - box.left;
+        y1 = fromBox.top - box.top + fromBox.height / 2;
+        x2 = fromSide === 'left' ? toBox.right - box.left : toBox.left - box.left;
+        y2 = toBox.top - box.top + toBox.height / 2;
+        const dx = Math.abs(x2 - x1);
+        const bend = dx > 40 ? Math.max(28, dx / 2) : 18;
+        signed = fromSide === 'left' ? -bend : bend;
+      } else {
+        mode = 'v';
+        x1 = 28;
+        x2 = 28;
+        y1 = Math.min(fromBox.bottom, toBox.bottom) - box.top + 1;
+        y2 = Math.max(fromBox.top, toBox.top) - box.top - 1;
+        signed = 0;
+      }
 
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', `M ${x1} ${y1} C ${x1 + signed} ${y1}, ${x2 - signed} ${y2}, ${x2} ${y2}`);
       path.setAttribute('pathLength', '1');
       path.setAttribute('class', 'schema-edge');
       path.setAttribute('data-tables', `${from[0]} ${to[0]}`);
@@ -113,26 +130,39 @@ import { schema } from '../data/profile';
       path.setAttribute('stroke-width', '1.5');
       svg.append(path);
 
-      const mid = path.getPointAtLength(path.getTotalLength() / 2);
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', String(mid.x));
-      text.setAttribute('y', String(mid.y - 6));
-      text.setAttribute('text-anchor', 'middle');
       text.setAttribute('class', 'schema-edge-label');
       text.setAttribute('fill', 'var(--color-muted)');
       text.setAttribute('font-size', '10');
       text.textContent = label;
-      svg.append(text);
 
-      const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      pulse.setAttribute('r', '2.5');
-      pulse.setAttribute('class', 'schema-pulse');
-      pulse.setAttribute('fill', 'var(--color-accent)');
-      pulse.setAttribute('cx', '-20');
-      pulse.setAttribute('cy', '-20');
-      svg.append(pulse);
+      let pulse: SVGCircleElement | null = null;
+
+      if (mode === 'h') {
+        path.setAttribute('d', `M ${x1} ${y1} C ${x1 + signed} ${y1}, ${x2 - signed} ${y2}, ${x2} ${y2}`);
+        const mid = path.getPointAtLength(path.getTotalLength() / 2);
+        text.setAttribute('x', String(mid.x));
+        text.setAttribute('y', String(mid.y - 6));
+        text.setAttribute('text-anchor', 'middle');
+        svg.append(text);
+
+        pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        pulse.setAttribute('r', '2.5');
+        pulse.setAttribute('class', 'schema-pulse');
+        pulse.setAttribute('fill', 'var(--color-accent)');
+        pulse.setAttribute('cx', '-20');
+        pulse.setAttribute('cy', '-20');
+        svg.append(pulse);
+      } else {
+        path.setAttribute('d', `M ${x1} ${y1} C ${x1} ${(y1 + y2) / 2}, ${x2} ${(y1 + y2) / 2}, ${x2} ${y2}`);
+        text.setAttribute('x', String(x1 + 12));
+        text.setAttribute('y', String((y1 + y2) / 2 + 3.5));
+        text.setAttribute('text-anchor', 'start');
+        svg.append(text);
+      }
 
       edges.push({
+        mode,
         path,
         pulse,
         x1,
@@ -140,7 +170,7 @@ import { schema } from '../data/profile';
         x2,
         y2,
         signed,
-        amp: Math.min(12, Math.max(5, Math.abs(signed) * 0.15)),
+        amp: mode === 'h' ? Math.min(12, Math.max(5, Math.abs(signed) * 0.15)) : 2.5,
         phase: i * 2.4,
         speed: 0.26 + i * 0.08,
       });
@@ -148,21 +178,33 @@ import { schema } from '../data/profile';
   }
 
   // The wires sway: control points breathe while the endpoints stay anchored,
-  // and a pulse rides each wire from FK to PK.
+  // and a pulse rides each horizontal wire from FK to PK.
   function tick(now: number) {
     const t = (now - clock) / 1000;
     for (const e of edges) {
-      const wob1 = Math.sin(t * 0.6 + e.phase) * e.amp;
-      const wob2 = Math.sin(t * 0.8 + e.phase + 1.3) * e.amp;
-      const wobY = Math.cos(t * 0.5 + e.phase) * e.amp * 0.35;
-      e.path.setAttribute(
-        'd',
-        `M ${e.x1} ${e.y1} C ${e.x1 + e.signed + wob1} ${e.y1 + wobY}, ${e.x2 - e.signed + wob2} ${e.y2 - wobY}, ${e.x2} ${e.y2}`,
-      );
-      const p = (((t * e.speed + e.phase * 0.13) % 1) + 1) % 1;
-      const pt = e.path.getPointAtLength(p * e.path.getTotalLength());
-      e.pulse.setAttribute('cx', pt.x.toFixed(1));
-      e.pulse.setAttribute('cy', pt.y.toFixed(1));
+      if (e.mode === 'h') {
+        const wob1 = Math.sin(t * 0.6 + e.phase) * e.amp;
+        const wob2 = Math.sin(t * 0.8 + e.phase + 1.3) * e.amp;
+        const wobY = Math.cos(t * 0.5 + e.phase) * e.amp * 0.35;
+        e.path.setAttribute(
+          'd',
+          `M ${e.x1} ${e.y1} C ${e.x1 + e.signed + wob1} ${e.y1 + wobY}, ${e.x2 - e.signed + wob2} ${e.y2 - wobY}, ${e.x2} ${e.y2}`,
+        );
+        if (e.pulse) {
+          const p = (((t * e.speed + e.phase * 0.13) % 1) + 1) % 1;
+          const pt = e.path.getPointAtLength(p * e.path.getTotalLength());
+          e.pulse.setAttribute('cx', pt.x.toFixed(1));
+          e.pulse.setAttribute('cy', pt.y.toFixed(1));
+        }
+      } else {
+        const w1 = Math.sin(t * 0.7 + e.phase) * e.amp;
+        const w2 = Math.sin(t * 0.9 + e.phase + 1.1) * e.amp;
+        const ym = (e.y1 + e.y2) / 2;
+        e.path.setAttribute(
+          'd',
+          `M ${e.x1 + w1} ${e.y1} C ${e.x1 + w1} ${ym}, ${e.x2 + w2} ${ym}, ${e.x2 + w2} ${e.y2}`,
+        );
+      }
     }
     rafId = requestAnimationFrame(tick);
   }
@@ -177,12 +219,17 @@ import { schema } from '../data/profile';
       rafId = 0;
       // Park the wires on their resting curves.
       for (const e of edges) {
+        const ym = (e.y1 + e.y2) / 2;
         e.path.setAttribute(
           'd',
-          `M ${e.x1} ${e.y1} C ${e.x1 + e.signed} ${e.y1}, ${e.x2 - e.signed} ${e.y2}, ${e.x2} ${e.y2}`,
+          e.mode === 'h'
+            ? `M ${e.x1} ${e.y1} C ${e.x1 + e.signed} ${e.y1}, ${e.x2 - e.signed} ${e.y2}, ${e.x2} ${e.y2}`
+            : `M ${e.x1} ${e.y1} C ${e.x1} ${ym}, ${e.x2} ${ym}, ${e.x2} ${e.y2}`,
         );
-        e.pulse.setAttribute('cx', '-20');
-        e.pulse.setAttribute('cy', '-20');
+        if (e.pulse) {
+          e.pulse.setAttribute('cx', '-20');
+          e.pulse.setAttribute('cy', '-20');
+        }
       }
     }
   }
