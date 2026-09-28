@@ -329,6 +329,21 @@
   }
 }
 
+/* The input's ghost layer: dim text with the understood fragments lit. */
+.nl-plain {
+  color: color-mix(in oklab, var(--color-ink) 42%, transparent);
+}
+
+.nl-hit {
+  color: var(--color-accent);
+}
+
+/* A resolved query lights the searches row it belongs to. */
+.schema-node-flash {
+  border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 6%, var(--color-canvas));
+}
+
 [data-schema-table],
 .schema-edge,
 .schema-edge-label {

@@ -18,19 +18,26 @@ const chips = [
       <label for="nl-demo-input" class="text-xs font-medium text-soft">
         {nlDemo.inputLabel}
       </label>
-      <input
-        id="nl-demo-input"
-        type="text"
-        autocomplete="off"
-        spellcheck="false"
-        placeholder={nlDemo.placeholder}
-        class="mt-2 w-full rounded-lg border border-line bg-canvas px-3 py-2.5 text-sm text-ink placeholder:text-muted"
-      />
+      <div class="relative mt-2 rounded-lg border border-line bg-canvas">
+        <div
+          aria-hidden="true"
+          class="nl-mirror pointer-events-none overflow-hidden px-3 py-2.5 text-sm whitespace-pre"
+          data-nl-mirror
+        ></div>
+        <input
+          id="nl-demo-input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder={nlDemo.placeholder}
+          class="absolute inset-0 w-full bg-transparent px-3 py-2.5 text-sm text-transparent caret-accent placeholder:text-muted"
+        />
+      </div>
       <div class="mt-3 flex flex-wrap gap-1.5">
         {nlDemo.examples.map((example) => (
           <button
             type="button"
-            class="rounded-full border border-line px-2.5 py-1 font-mono text-[11px] text-muted transition-colors hover:border-accent/50 hover:text-accent focus-visible:border-accent motion-reduce:transition-none"
+            class="shrink-0 rounded-full border border-line px-2.5 py-1 font-mono text-[11px] whitespace-nowrap text-muted transition-colors hover:border-accent/50 hover:text-accent focus-visible:border-accent motion-reduce:transition-none"
             data-nl-example={example}
           >
             {example}
@@ -93,27 +100,39 @@ const chips = [
     return String(value);
   }
 
-  function parse(text: string): Record<string, string | null> {
-    const out: Record<string, string | null> = { beds: null, type: null, city: null, price: null };
+  // Values for the chips plus the source ranges, so the input can highlight
+  // what was understood.
+  function analyze(text: string): { values: Record<string, string | null>; ranges: [number, number][] } {
+    const values: Record<string, string | null> = { beds: null, type: null, city: null, price: null };
+    const ranges: [number, number][] = [];
     const q = text.toLowerCase();
 
-    const beds =
+    let beds =
       q.match(/\b(\d)\s*-?\s*(?:bed|bedroom|br)\b/) ??
       Object.keys(WORD_BEDS).reduce<RegExpMatchArray | null>(
         (hit, word) => hit ?? (q.match(new RegExp(`\\b${word}\\s*-?\\s*bed`)) && [word, WORD_BEDS[word]]),
         null,
       );
-    if (beds) out.beds = beds[1];
+    if (beds) {
+      values.beds = beds[1];
+      ranges.push([beds.index!, beds.index! + beds[0].length]);
+    }
 
     for (const [re, name] of TYPES) {
-      if (re.test(q)) {
-        out.type = name;
+      const m = q.match(re);
+      if (m) {
+        values.type = name;
+        ranges.push([m.index!, m.index! + m[0].length]);
         break;
       }
     }
 
     const city = CITIES.find((c) => q.includes(c));
-    if (city) out.city = city.replace(/\b\w/g, (ch) => ch.toUpperCase());
+    if (city) {
+      values.city = city.replace(/\b\w/g, (ch) => ch.toUpperCase());
+      const at = q.indexOf(city);
+      ranges.push([at, at + city.length]);
+    }
 
     const price =
       q.match(/(?:under|below|less than|up to|max(?:imum)?|≤|<)\s*(?:aed|gbp|£|\$)?\s*([\d.,]+)\s*(k|m|million)?\b/) ??
@@ -122,43 +141,116 @@ const chips = [
     if (price) {
       const value =
         parseFloat(price[1].replace(/,/g, '')) * (price[2]?.startsWith('m') ? 1e6 : price[2] === 'k' ? 1e3 : 1);
-      if (!Number.isNaN(value)) out.price = `≤ ${compact(value)}`;
+      if (!Number.isNaN(value)) {
+        values.price = `≤ ${compact(value)}`;
+        ranges.push([price.index!, price.index! + price[0].length]);
+      }
     }
 
-    return out;
+    return { values, ranges };
   }
 
   if (root) {
     const input = root.querySelector<HTMLInputElement>('#nl-demo-input');
+    const mirror = root.querySelector<HTMLElement>('[data-nl-mirror]');
     const chipEls = new Map(
       [...root.querySelectorAll<HTMLElement>('[data-nl-chip]')].map((el) => [el.dataset.nlChip!, el]),
     );
+    const searchesNode = document.querySelector<HTMLElement>('[data-schema-table="searches"]');
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     let last = '';
+    let wasOn = false;
+    let playTimer = 0;
+
+    function stopPlayback() {
+      if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = 0;
+      }
+    }
 
     function render(text: string) {
       if (text === last) return;
       last = text;
-      const parsed = parse(text);
+      const { values, ranges } = analyze(text);
+
       for (const [id, el] of chipEls) {
-        const value = parsed[id];
+        const value = values[id];
         const next = value ? `${el.dataset.label}: ${value}` : el.dataset.label!;
         if (el.textContent !== next) {
           el.textContent = next;
-          // Retrigger the settle pop only when motion is allowed.
           el.classList.remove('chip-pop');
           void el.offsetWidth;
           el.classList.add('chip-pop');
         }
         el.classList.toggle('chip-on', Boolean(value));
       }
+
+      // Mirror the input with the understood fragments highlighted.
+      if (mirror) {
+        mirror.replaceChildren();
+        let cursor = 0;
+        const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
+        for (const [start, end] of sorted) {
+          if (start < cursor) continue;
+          if (start > cursor) {
+            const plain = document.createElement('span');
+            plain.className = 'nl-plain';
+            plain.textContent = text.slice(cursor, start);
+            mirror.append(plain);
+          }
+          const hit = document.createElement('span');
+          hit.className = 'nl-hit';
+          hit.textContent = text.slice(start, end);
+          mirror.append(hit);
+          cursor = end;
+        }
+        if (cursor < text.length) {
+          const plain = document.createElement('span');
+          plain.className = 'nl-plain';
+          plain.textContent = text.slice(cursor);
+          mirror.append(plain);
+        }
+        mirror.scrollLeft = input?.scrollLeft ?? 0;
+      }
+
+      // A query that just resolved lights the searches row it belongs to.
+      const on = Object.values(values).some(Boolean);
+      if (on && !wasOn && searchesNode) {
+        searchesNode.classList.add('schema-node-flash');
+        setTimeout(() => searchesNode.classList.remove('schema-node-flash'), 800);
+      }
+      wasOn = on;
     }
 
-    input?.addEventListener('input', () => render(input.value));
+    function playExample(text: string) {
+      stopPlayback();
+      if (reducedMotion.matches) {
+        input!.value = text;
+        render(text);
+        return;
+      }
+      let i = 0;
+      input!.value = '';
+      render('');
+      playTimer = window.setInterval(() => {
+        i = Math.min(text.length, i + 1 + Math.floor(Math.random() * 2));
+        input!.value = text.slice(0, i);
+        render(input!.value);
+        if (i >= text.length) stopPlayback();
+      }, 34);
+    }
+
+    input?.addEventListener('input', () => {
+      // A keystroke hands control back to the reader.
+      stopPlayback();
+      render(input.value);
+    });
+    input?.addEventListener('scroll', () => {
+      if (mirror) mirror.scrollLeft = input.scrollLeft;
+    });
     for (const button of root.querySelectorAll<HTMLButtonElement>('[data-nl-example]')) {
-      button.addEventListener('click', () => {
-        input!.value = button.dataset.nlExample!;
-        render(button.dataset.nlExample!);
-      });
+      button.addEventListener('click', () => playExample(button.dataset.nlExample!));
     }
   }
 </script>
