@@ -344,6 +344,60 @@
   background: color-mix(in oklab, var(--color-accent) 6%, var(--color-canvas));
 }
 
+/* Perfume shelf: the descent line burns from top notes to base. */
+.scent-tab-on {
+  border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
+  background: color-mix(in oklab, var(--color-accent) 8%, var(--color-canvas));
+}
+
+.scent-rail-fill {
+  transform: scaleY(1);
+  transform-origin: top;
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal].is-in .scent-rail-fill {
+    animation: scent-descent 5.5s ease-in-out infinite;
+  }
+}
+
+@keyframes scent-descent {
+  0% {
+    transform: scaleY(0);
+    opacity: 0.7;
+  }
+  60% {
+    transform: scaleY(1);
+    opacity: 0.7;
+  }
+  85% {
+    transform: scaleY(1);
+    opacity: 0.25;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scent-panel-in {
+    animation: scent-swap 320ms var(--ease-out-expo);
+  }
+
+  @keyframes scent-swap {
+    from {
+      opacity: 0.3;
+      transform: translate3d(0, 6px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
 [data-schema-table],
 .schema-edge,
 .schema-edge-label {

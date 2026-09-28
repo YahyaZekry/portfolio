@@ -29,6 +29,16 @@ export type SchemaColumn = { name: string; type: string; key?: 'pk' | 'fk' };
 export type SchemaTable = { id: string; name: string; note: string; columns: SchemaColumn[] };
 export type SchemaRelation = { from: [string, string]; to: [string, string]; label: string };
 
+export type ScentTier = { label: string; act?: string; notes: string[] };
+export type Perfume = {
+  name: string;
+  house: string;
+  year: string;
+  family: string;
+  perfumer?: string;
+  tiers: ScentTier[]; // top, heart, base
+};
+
 export const profile = {
   name: 'Ahmed Ghazy',
   title: 'Full-Stack Engineer',
@@ -213,6 +223,60 @@ export const nlDemo = {
   examples: ['3 bed flat in Dubai under 2M', 'studio in Manchester under 250k', 'five bed villa in Abu Dhabi'],
 };
 
+// The perfume shelf: real pyramids, researched from the houses and Fragrantica.
+export const collection = {
+  lead: 'Away from the keyboard I collect perfume. A scent is a timeline: bright at the top, dark at the base, and the trip between is what you actually smell. Pick a bottle and read it top to base.',
+  perfumes: [
+    {
+      name: 'God of Fire',
+      house: 'Stéphane Humbert Lucas 777',
+      year: '2022',
+      family: 'Oriental woody',
+      perfumer: 'Stéphane Humbert Lucas & Vincent Ricord',
+      tiers: [
+        { label: 'Top', act: 'Fulgurance', notes: ['Mango', 'Lemon', 'Pink Berries', 'Ginger'] },
+        { label: 'Heart', act: 'Métamorphose', notes: ['Blue Coumarin', 'Jasmine', 'Cedar'] },
+        { label: 'Base', act: 'Quintessence', notes: ['Oud', 'Nagarmotha', 'Musk', 'Amber'] },
+      ],
+    },
+    {
+      name: 'Greenley',
+      house: 'Parfums de Marly',
+      year: '2020',
+      family: 'Aromatic citrus',
+      perfumer: 'Nathalie Templer',
+      tiers: [
+        { label: 'Top', notes: ['Green Apple', 'Bergamot', 'Mandarin'] },
+        { label: 'Heart', notes: ['Petitgrain', 'Violet', 'Cashmeran'] },
+        { label: 'Base', notes: ['Amberwood', 'Oakmoss', 'Musk'] },
+      ],
+    },
+    {
+      name: 'Oud Wood',
+      house: 'Tom Ford Private Blend',
+      year: '2007',
+      family: 'Woody oriental',
+      perfumer: 'Richard Herpin',
+      tiers: [
+        { label: 'Top', notes: ['Rosewood', 'Cardamom', 'Sichuan Pepper'] },
+        { label: 'Heart', notes: ['Oud', 'Sandalwood', 'Vetiver'] },
+        { label: 'Base', notes: ['Tonka Bean', 'Vanilla', 'Amber'] },
+      ],
+    },
+    {
+      name: 'L.12.12 Blanc',
+      house: 'Lacoste',
+      year: '2011',
+      family: 'Woody aromatic',
+      tiers: [
+        { label: 'Top', notes: ['Grapefruit', 'Rosemary', 'Cardamom'] },
+        { label: 'Heart', notes: ['Tuberose', 'Ylang-Ylang'] },
+        { label: 'Base', notes: ['Leather', 'Suede', 'Cedar', 'Vetiver'] },
+      ],
+    },
+  ] satisfies Perfume[],
+};
+
 export const ui = {
   skipLink: 'Skip to Content',
   newTab: ' (opens in a new tab)',
@@ -225,6 +289,7 @@ export const ui = {
     { id: 'experience', title: 'Experience' },
     { id: 'projects', title: 'Projects' },
     { id: 'schema', title: 'Data Model' },
+    { id: 'collection', title: 'Collection' },
   ],
   resume: { lead: 'View Full', last: 'Résumé' },
   contact: {

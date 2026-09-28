@@ -7,12 +7,13 @@ import Header from '../components/Header.astro';
 import ProjectItem from '../components/ProjectItem.astro';
 import RichText from '../components/RichText.astro';
 import FiltersDemo from '../components/FiltersDemo.astro';
+import PerfumeCollection from '../components/PerfumeCollection.astro';
 import SchemaDiagram from '../components/SchemaDiagram.astro';
 import Section from '../components/Section.astro';
 import Spotlight from '../components/Spotlight.astro';
-import { about, experience, profile, projects, schema, ui } from '../data/profile';
+import { about, collection, experience, profile, projects, schema, ui } from '../data/profile';
 
-const [aboutSection, experienceSection, projectsSection, schemaSection] = ui.sections;
+const [aboutSection, experienceSection, projectsSection, schemaSection, collectionSection] = ui.sections;
 ---
 
 <Layout>
@@ -67,6 +68,13 @@ const [aboutSection, experienceSection, projectsSection, schemaSection] = ui.sec
               <div class="mt-6">
                 <FiltersDemo />
               </div>
+            </Section>
+
+            <Section {...collectionSection}>
+              <p class="mb-8 max-w-2xl leading-relaxed" data-reveal>
+                {collection.lead}
+              </p>
+              <PerfumeCollection />
             </Section>
           </main>
 

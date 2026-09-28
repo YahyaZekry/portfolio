@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { toPlainText } from '../lib/inline';
-import { about, experience, profile, projects, schema, socials } from '../data/profile';
+import { about, collection, experience, profile, projects, schema, socials } from '../data/profile';
 
 // Follows llmstxt.org: H1, blockquote, free-form sections, then H2 sections that only hold link lists.
 export const GET: APIRoute = ({ site }) => {
@@ -46,6 +46,18 @@ export const GET: APIRoute = ({ site }) => {
     `- Relations: ${schema.relations
       .map(({ from, to, label }) => `${from[0]}.${from[1]} -> ${to[0]}.${to[1]} (${label})`)
       .join('; ')}.`,
+    '',
+    '## Perfume Collection',
+    '',
+    collection.lead,
+    '',
+    ...collection.perfumes.map((perfume) => {
+      const [top, heart, base] = perfume.tiers;
+      const tier = (t: typeof top) => `${t.label.toLowerCase()}: ${t.notes.join(', ')}`;
+      return `- ${perfume.name} — ${perfume.house}, ${perfume.year} (${perfume.family}${
+        perfume.perfumer ? `, ${perfume.perfumer}` : ''
+      }): ${tier(top)}; ${tier(heart)}; ${tier(base)}.`;
+    }),
     '',
     '## Links',
     '',

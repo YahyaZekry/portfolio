@@ -1,0 +1,92 @@
+---
+import { collection } from '../data/profile';
+---
+
+<div class="relative rounded-xl border border-line bg-surface p-4 card-edge sm:p-6" data-collection data-reveal>
+  <div class="grid gap-6 lg:grid-cols-[1fr_1.4fr] lg:gap-10">
+    <div class="flex flex-col gap-2" role="tablist" aria-label="Pick a bottle">
+      {collection.perfumes.map((perfume, i) => (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={i === 0 ? 'true' : 'false'}
+          class="rounded-lg border border-line bg-canvas px-4 py-3 text-left transition-colors duration-200 hover:border-line-strong motion-reduce:transition-none"
+          data-scent-tab={i}
+        >
+          <span class="block text-sm font-semibold text-ink">{perfume.name}</span>
+          <span class="mt-0.5 block font-mono text-[11px] text-muted">
+            {perfume.house} · {perfume.year}
+          </span>
+        </button>
+      ))}
+    </div>
+
+    <div class="relative">
+      {collection.perfumes.map((perfume, i) => (
+        <div class={i === 0 ? '' : 'hidden'} data-scent-panel={i}>
+          <p class="font-mono text-[11px] text-muted">
+            {perfume.family}
+            {perfume.perfumer && ` · ${perfume.perfumer}`}
+          </p>
+          <div class="relative mt-4 pl-6">
+            <span aria-hidden="true" class="scent-rail absolute top-2 bottom-2 left-[5px] w-px bg-line">
+              <span aria-hidden="true" class="scent-rail-fill absolute inset-0 w-px bg-accent" />
+            </span>
+            <ol class="space-y-5">
+              {perfume.tiers.map((tier) => (
+                <li class="relative">
+                  <span
+                    aria-hidden="true"
+                    class="absolute top-1.5 -left-6 h-[9px] w-[9px] rounded-full border border-accent bg-surface"
+                  />
+                  <p class="font-mono text-xs text-muted uppercase tracking-wide">
+                    {tier.label}
+                    {tier.act && <span class="text-soft normal-case"> · {tier.act}</span>}
+                  </p>
+                  <ul class="mt-2 flex flex-wrap gap-1.5">
+                    {tier.notes.map((note) => (
+                      <li class="rounded-full border border-line bg-canvas px-3 py-1 text-xs text-soft">{note}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script>
+  // Selector: one pyramid visible at a time. Classes only, so the CSP holds.
+  const root = document.querySelector<HTMLElement>('[data-collection]');
+
+  if (root) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[data-scent-tab]')];
+    const panels = [...root.querySelectorAll<HTMLElement>('[data-scent-panel]')];
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    function select(index: number) {
+      for (const tab of tabs) {
+        const active = Number(tab.dataset.scentTab) === index;
+        tab.setAttribute('aria-selected', String(active));
+        tab.classList.toggle('scent-tab-on', active);
+      }
+      for (const panel of panels) {
+        const active = Number(panel.dataset.scentPanel) === index;
+        panel.classList.toggle('hidden', !active);
+        if (active && !reducedMotion.matches) {
+          panel.classList.remove('scent-panel-in');
+          void panel.offsetWidth;
+          panel.classList.add('scent-panel-in');
+        }
+      }
+    }
+
+    for (const tab of tabs) {
+      tab.addEventListener('click', () => select(Number(tab.dataset.scentTab)));
+    }
+    select(0);
+  }
+</script>
